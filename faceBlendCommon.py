@@ -220,8 +220,11 @@ def warpTriangle(img1, img2, t1, t2):
 def getLandmarks(im, FACE_DOWNSAMPLE_RATIO = 1):
   mp_drawing = mp.solutions.drawing_utils
   mp_face_mesh = mp.solutions.face_mesh
-  keypnt_68 = [127, 234, 93, 213, 138, 169, 149, 148, 152, 377, 378, 365, 367, 433, 366, 454, 368, 156, 63, 105, 66, 107, 336, 296, 334, 293, 300, 168, 197, 5, 4, 240, 97, 2, 326, 305, 33, 160, 158, 154, 153, 144, 382, 385, 386, 249, 373, 380, 61, 74, 37, 11, 267, 303, 291, 404, 314, 17, 84, 91, 146, 87, 14, 312, 307, 312, 14, 87]
-    # drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
+  keypnt_68 = [127, 93, 58, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 288, 323, 356, 70, 63, 105, 66, 55,
+               285, 296, 334, 293, 300, 168, 6, 195, 4, 64, 60, 94, 290, 439, 33, 160, 158, 173, 153, 144, 398, 385,
+               387, 466, 373, 380, 61, 40, 39, 0, 269, 270, 291, 321, 405, 17, 181, 91, 78, 81, 13, 311, 306, 402, 14,
+               178]
+  # drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
   img = im
   with mp_face_mesh.FaceMesh(
       static_image_mode=True,
@@ -236,8 +239,8 @@ def getLandmarks(im, FACE_DOWNSAMPLE_RATIO = 1):
 
       for face_landmarks in results.multi_face_landmarks:
           height, width = image.shape[:-1]
-          print(image.shape[:-1])
-          print(face_landmarks.landmark)
+          # print(image.shape[:-1])
+          # print(face_landmarks.landmark)
           values = np.array(face_landmarks.landmark)
           face_keypnts = np.zeros((len(values), 2))
 
