@@ -8,14 +8,15 @@ SKIP_FRAMES = 2
 FACE_DOWNSAMPLE_RATIO = 1.5
 RESIZE_HEIGHT = 480
 
-VISUALIZE_FACE_POINTS = True
+VISUALIZE_FACE_POINTS = False
 
 DATA_PATH = "filters/"
-filter_name = "anonymous"
+filter_name = "anime"
 
 # Processing input file
 filename1 = DATA_PATH + f"{filter_name}.png"
-annotation_file = DATA_PATH + f"{filter_name}_annotations.csv"
+# annotation_file = DATA_PATH + f"{filter_name}_annotations.csv"
+annotation_file = DATA_PATH + f"{filter_name}_annotations_updated.csv"
 
 # Read the image and resize it
 img1 = cv2.imread(filename1)
@@ -45,13 +46,12 @@ img1 = np.float32(img1)
 # Find convex hull for delaunay triangulation using the landmark points
 hull1 = []
 hullIndex = cv2.convexHull(np.array(points1), clockwise=False, returnPoints=False)
-# addPoints = [[48], [49], [50], [51], [52], [53], [54], [55], [56], [57], [58], [59]]  # Outer lips
-# hullIndex = np.concatenate((hullIndex, addPoints))
-addPoints = [[60], [61], [62], [63], [64], [65], [66], [67]]  # Inner lips
-hullIndex = np.concatenate((hullIndex, addPoints))
-# addPoints = [[27], [28], [29], [30], [31], [32], [33], [34], [35]]  # Nose
-# hullIndex = np.concatenate((hullIndex, addPoints))
-addPoints = [[36], [37], [38], [39], [40], [41], [42], [43], [44], [45], [46], [47]]  # Eyes
+addPoints = [
+    [48], [49], [50], [51], [52], [53], [54], [55], [56], [57], [58], [59],  # Outer lips
+    [60], [61], [62], [63], [64], [65], [66], [67],  # Inner lips
+    [27], [28], [29], [30], [31], [32], [33], [34], [35],  # Nose
+    [36], [37], [38], [39], [40], [41], [42], [43], [44], [45], [46], [47]  # Eyes
+    ]
 hullIndex = np.concatenate((hullIndex, addPoints))
 for i in range(0, len(hullIndex)):
     hull1.append(points1[hullIndex[i][0]])
@@ -106,8 +106,9 @@ while True:
             continue
 
         if VISUALIZE_FACE_POINTS:
-            for point in points2:
+            for idx, point in enumerate(points2):
                 cv2.circle(img2, point, 2, (255, 0, 0), -1)
+                cv2.putText(img2, str(idx), point, cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 255, 255), 1)
             cv2.imshow("landmarks", img2)
 
         # Find convex hull
