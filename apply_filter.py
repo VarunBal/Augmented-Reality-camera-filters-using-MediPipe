@@ -15,8 +15,7 @@ filter_name = "anime"
 
 # Processing input file
 filename1 = DATA_PATH + f"{filter_name}.png"
-# annotation_file = DATA_PATH + f"{filter_name}_annotations.csv"
-annotation_file = DATA_PATH + f"{filter_name}_annotations_updated.csv"
+annotation_file = DATA_PATH + f"{filter_name}_annotations.csv"
 
 # Read the image and resize it
 img1 = cv2.imread(filename1)
