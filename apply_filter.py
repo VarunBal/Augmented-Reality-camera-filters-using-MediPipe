@@ -18,7 +18,7 @@ filename1 = DATA_PATH + f"{filter_name}.png"
 annotation_file = DATA_PATH + f"{filter_name}_annotations.csv"
 
 # Read the image and resize it
-img1 = cv2.imread(filename1)
+img1 = cv2.imread(filename1, cv2.IMREAD_UNCHANGED)
 height, width = img1.shape[:2]
 IMAGE_RESIZE = np.float32(height) / RESIZE_HEIGHT
 img1 = cv2.resize(img1, None,
@@ -26,6 +26,9 @@ img1 = cv2.resize(img1, None,
                   fy=1.0 / IMAGE_RESIZE,
                   interpolation=cv2.INTER_LINEAR)
 resized_height, resized_width = img1.shape[:2]
+
+img1_b, img1_g, img1_r, img1_alpha = cv2.split(img1)
+img1 = cv2.merge((img1_b, img1_g, img1_r))
 
 # load landmark points
 with open(annotation_file) as csv_file:
@@ -141,6 +144,10 @@ while True:
         img2GrayPrev = img2Gray
         ################ End of Optical Flow and Stabilization Code ###############
 
+        mask1 = np.zeros((img1Warped.shape[0], img1Warped.shape[1]), dtype=np.float32)
+        mask1 = cv2.merge((mask1, mask1, mask1))
+        img1_alpha_mask = cv2.merge((img1_alpha, img1_alpha, img1_alpha))
+
         # Warp the triangles
         for i in range(0, len(dt)):
             t1 = []
@@ -151,6 +158,7 @@ while True:
                 t2.append(hull2[dt[i][j]])
 
             fbc.warpTriangle(img1, img1Warped, t1, t2)
+            fbc.warpTriangle(img1_alpha_mask, mask1, t1, t2)
 
         ##################  Blending  #############################################
         img1Warped = np.uint8(img1Warped)
@@ -160,25 +168,8 @@ while True:
         # output = cc.correctColours(img2, img1Warped, points2)
         output = img1Warped
 
-        # cv2.imshow("After color correction", output)
-
-        # Create a Mask around the face
-        re = cv2.boundingRect(np.array(hull2, np.float32))
-        centerx = (re[0] + (re[0] + re[2])) / 2
-        centery = (re[1] + (re[1] + re[3])) / 2
-
-        hull3 = []
-        for i in range(0, len(hull2) - len(addPoints)):
-            # Take the points just inside of the convex hull
-            hull3.append((0.95 * (hull2[i][0] - centerx) + centerx, 0.95 * (hull2[i][1] - centery) + centery))
-
-        mask1 = np.zeros((img2.shape[0], img2.shape[1], 3), dtype=np.float32)
-        hull3Arr = np.array(hull3, np.int32)
-
-        cv2.fillConvexPoly(mask1, hull3Arr, (255.0, 255.0, 255.0), 16, 0)
-
         # Blur the mask before blending
-        mask1 = cv2.GaussianBlur(mask1, (51, 51), 10)
+        mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
 
         mask2 = (255.0, 255.0, 255.0) - mask1
 
