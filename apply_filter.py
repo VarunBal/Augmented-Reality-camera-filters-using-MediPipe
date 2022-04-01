@@ -1,11 +1,10 @@
-import cv2, time, math
+import cv2
+import math
 import numpy as np
 import faceBlendCommon as fbc
-import colorCorrection as cc
 import csv
 
 SKIP_FRAMES = 2
-FACE_DOWNSAMPLE_RATIO = 1.5
 RESIZE_HEIGHT = 480
 
 VISUALIZE_FACE_POINTS = False
@@ -69,14 +68,11 @@ if len(dt) == 0:
 print("processed input image")
 
 # process input from webcam or video file
-# cap = cv2.VideoCapture(DATA_PATH + "sample-video.mp4")
 cap = cv2.VideoCapture(0)
 
 # Some variables for tracking time
 count = 0
-fps = 30.0
-tt = time.time()
-isFirstFrame = False
+isFirstFrame = True
 sigma = 50
 
 # The main loop
@@ -97,9 +93,9 @@ while True:
 
         # find landmarks after skipping SKIP_FRAMES number of frames
         if count % SKIP_FRAMES == 0:
-            points2 = fbc.getLandmarks(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB), FACE_DOWNSAMPLE_RATIO)
+            points2 = fbc.getLandmarks(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
 
-        # convert  float data type
+        # convert to float data type
         img1Warped = np.copy(img2)
         img1Warped = np.float32(img1Warped)
 
@@ -121,10 +117,10 @@ while True:
         ################ Optical Flow and Stabilization Code #####################
         img2Gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
-        if not isFirstFrame:
-            isFirstFrame = True
+        if isFirstFrame:
             hull2Prev = np.array(hull2, np.float32)
             img2GrayPrev = np.copy(img2Gray)
+            isFirstFrame = False
 
         lk_params = dict(winSize=(101, 101), maxLevel=15,
                          criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.001))
@@ -160,33 +156,21 @@ while True:
             fbc.warpTriangle(img1, img1Warped, t1, t2)
             fbc.warpTriangle(img1_alpha_mask, mask1, t1, t2)
 
-        ##################  Blending  #############################################
-        img1Warped = np.uint8(img1Warped)
-        # cv2.imshow("img1Warped", img1Warped)
-
-        # Color Correction of the warped image so that the source color matches that of the destination
-        # output = cc.correctColours(img2, img1Warped, points2)
-        output = img1Warped
+        output = np.uint8(img1Warped)
 
         # Blur the mask before blending
         mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
 
         mask2 = (255.0, 255.0, 255.0) - mask1
 
-        # cv2.imshow("mask1", np.uint8(mask1))
-        # cv2.imshow("mask2", np.uint8(mask2))
-
         # Perform alpha blending of the two images
         temp1 = np.multiply(output, (mask1 * (1.0 / 255)))
         temp2 = np.multiply(img2, (mask2 * (1.0 / 255)))
         result = temp1 + temp2
 
-        # cv2.imshow("temp1", np.uint8(temp1))
-        # cv2.imshow("temp2", np.uint8(temp2))
-
         result = np.uint8(result)
 
-        cv2.imshow("After Blending", result)
+        cv2.imshow("Face Filter", result)
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
