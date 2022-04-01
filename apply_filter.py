@@ -10,7 +10,7 @@ RESIZE_HEIGHT = 480
 VISUALIZE_FACE_POINTS = False
 
 DATA_PATH = "filters/"
-filter_name = "anime"
+filter_name = "anonymous"
 
 # Processing input file
 filename1 = DATA_PATH + f"{filter_name}.png"
@@ -32,7 +32,7 @@ img1 = cv2.merge((img1_b, img1_g, img1_r))
 # load landmark points
 with open(annotation_file) as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=",")
-    points1 = [None] * 68
+    points1 = [None] * 75
     for i, row in enumerate(csv_reader):
         # skip head or empty line if it's there
         try:
@@ -100,7 +100,7 @@ while True:
         img1Warped = np.float32(img1Warped)
 
         # if face is partially detected
-        if not points2 or (len(points2) != 68):
+        if not points2 or (len(points2) != 75):
             continue
 
         if VISUALIZE_FACE_POINTS:
