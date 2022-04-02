@@ -9,12 +9,23 @@ SKIP_FRAMES = 2
 
 VISUALIZE_FACE_POINTS = False
 
-DATA_PATH = "filters/"
-filter_name = "anonymous"
+filters = {
+    'anonymous':
+        {'path': "filters/anonymous.png",
+         'anno_path': "filters/anonymous_annotations.csv",
+         'morph': True, 'animated': False, 'has_alpha': True},
+    'anime':
+        {'path': "filters/anime.png",
+         'anno_path': "filters/anime_annotations.csv",
+         'morph': True, 'animated': False, 'has_alpha': True},
+    'jason-joker':
+        {'path': "filters/jason-joker.png",
+         'anno_path': "filters/jason-joker_annotations.csv",
+         'morph': True, 'animated': False, 'has_alpha': True},
+}
 
-# Processing input file
-filename1 = DATA_PATH + f"{filter_name}.png"
-annotation_file = DATA_PATH + f"{filter_name}_annotations.csv"
+filter_name = "anonymous"
+filter = filters[filter_name]
 
 
 # detect facial landmarks in image
@@ -54,54 +65,68 @@ def getLandmarks(img):
             return relevant_keypnts
     return 0
 
-# Read the image and resize it
-img1 = cv2.imread(filename1, cv2.IMREAD_UNCHANGED)
+def load_filter(img_path, has_alpha):
+    # Read the image
+    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
 
-img1_b, img1_g, img1_r, img1_alpha = cv2.split(img1)
-img1 = cv2.merge((img1_b, img1_g, img1_r))
+    alpha = None
+    if has_alpha:
+        b, g, r, alpha = cv2.split(img)
+        img = cv2.merge((b, g, r))
 
-# load landmark points
-with open(annotation_file) as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter=",")
-    points1 = [None] * 75
-    for i, row in enumerate(csv_reader):
-        # skip head or empty line if it's there
-        try:
-            x, y = int(row[1]), int(row[2])
-            points1[int(row[0])] = x, y
-        except ValueError:
-            continue
+    return img, alpha
 
-img1 = np.float32(img1)
 
-# Find convex hull for delaunay triangulation using the landmark points
-hull1 = []
-hullIndex = cv2.convexHull(np.array(points1), clockwise=False, returnPoints=False)
-addPoints = [
-    [48], [49], [50], [51], [52], [53], [54], [55], [56], [57], [58], [59],  # Outer lips
-    [60], [61], [62], [63], [64], [65], [66], [67],  # Inner lips
-    [27], [28], [29], [30], [31], [32], [33], [34], [35],  # Nose
-    [36], [37], [38], [39], [40], [41], [42], [43], [44], [45], [46], [47],  # Eyes
-    [17], [18], [19], [20], [21], [22], [23], [24], [25], [26]  # Eyebrows
-    ]
-hullIndex = np.concatenate((hullIndex, addPoints))
-for i in range(0, len(hullIndex)):
-    hull1.append(points1[hullIndex[i][0]])
+img1, img1_alpha = load_filter(filter['path'], filter['has_alpha'])
 
-# Find Delaunay triangulation for convex hull points
-sizeImg1 = img1.shape
-rect = (0, 0, sizeImg1[1], sizeImg1[0])
-dt = fbc.calculateDelaunayTriangles(rect, hull1)
+def load_landmarks(annotation_file):
+    with open(annotation_file) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=",")
+        points = {}
+        for i, row in enumerate(csv_reader):
+            # skip head or empty line if it's there
+            try:
+                x, y = int(row[1]), int(row[2])
+                points[row[0]] = (x, y)
+            except ValueError:
+                continue
+        return points
 
-if len(dt) == 0:
-    quit()
+
+points1 = load_landmarks(filter['anno_path'])
+
+if filter['morph']:
+    # Find convex hull for delaunay triangulation using the landmark points
+    hull1 = []
+    hullIndex = cv2.convexHull(np.array(list(points1.values())), clockwise=False, returnPoints=False)
+    addPoints = [
+        [48], [49], [50], [51], [52], [53], [54], [55], [56], [57], [58], [59],  # Outer lips
+        [60], [61], [62], [63], [64], [65], [66], [67],  # Inner lips
+        [27], [28], [29], [30], [31], [32], [33], [34], [35],  # Nose
+        [36], [37], [38], [39], [40], [41], [42], [43], [44], [45], [46], [47],  # Eyes
+        [17], [18], [19], [20], [21], [22], [23], [24], [25], [26]  # Eyebrows
+        ]
+    hullIndex = np.concatenate((hullIndex, addPoints))
+    for i in range(0, len(hullIndex)):
+        hull1.append(points1[str(hullIndex[i][0])])
+
+    # Find Delaunay triangulation for convex hull points
+    sizeImg1 = img1.shape
+    rect = (0, 0, sizeImg1[1], sizeImg1[0])
+    dt = fbc.calculateDelaunayTriangles(rect, hull1)
+
+    if len(dt) == 0:
+        quit()
 
 print("processed input image")
 
 # process input from webcam or video file
 cap = cv2.VideoCapture(0)
 
-# Some variables for tracking time
+if filter['animated']:
+    filter_cap = cv2.VideoCapture(filter['path'])
+
+# Some variables
 count = 0
 isFirstFrame = True
 sigma = 50
@@ -120,7 +145,6 @@ while True:
 
         # convert to float data type
         img1Warped = np.copy(img2)
-        img1Warped = np.float32(img1Warped)
 
         # if face is partially detected
         if not points2 or (len(points2) != 75):
