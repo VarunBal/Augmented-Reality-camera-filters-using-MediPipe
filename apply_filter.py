@@ -6,7 +6,6 @@ import faceBlendCommon as fbc
 import csv
 
 SKIP_FRAMES = 2
-RESIZE_HEIGHT = 480
 
 VISUALIZE_FACE_POINTS = False
 
@@ -57,13 +56,6 @@ def getLandmarks(img):
 
 # Read the image and resize it
 img1 = cv2.imread(filename1, cv2.IMREAD_UNCHANGED)
-height, width = img1.shape[:2]
-IMAGE_RESIZE = np.float32(height) / RESIZE_HEIGHT
-img1 = cv2.resize(img1, None,
-                  fx=1.0 / IMAGE_RESIZE,
-                  fy=1.0 / IMAGE_RESIZE,
-                  interpolation=cv2.INTER_LINEAR)
-resized_height, resized_width = img1.shape[:2]
 
 img1_b, img1_g, img1_r, img1_alpha = cv2.split(img1)
 img1 = cv2.merge((img1_b, img1_g, img1_r))
@@ -76,8 +68,7 @@ with open(annotation_file) as csv_file:
         # skip head or empty line if it's there
         try:
             x, y = int(row[1]), int(row[2])
-            x, y = (x / width) * resized_width, (y / height) * resized_height
-            points1[int(row[0])] = (int(x), int(y))
+            points1[int(row[0])] = x, y
         except ValueError:
             continue
 
@@ -122,14 +113,6 @@ while True:
     if not ret:
         break
     else:
-
-        # Read each frame
-        height, width = img2.shape[:2]
-        IMAGE_RESIZE = np.float32(height) / RESIZE_HEIGHT
-        img2 = cv2.resize(img2, None,
-                          fx=1.0 / IMAGE_RESIZE,
-                          fy=1.0 / IMAGE_RESIZE,
-                          interpolation=cv2.INTER_LINEAR)
 
         # find landmarks after skipping SKIP_FRAMES number of frames
         if count % SKIP_FRAMES == 0:
