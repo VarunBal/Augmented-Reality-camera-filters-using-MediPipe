@@ -9,39 +9,46 @@ SKIP_FRAMES = 2
 
 VISUALIZE_FACE_POINTS = False
 
-filters = {
+filters_config = {
     'anonymous':
-        {'path': "filters/anonymous.png",
+        [{'path': "filters/anonymous.png",
          'anno_path': "filters/anonymous_annotations.csv",
-         'morph': True, 'animated': False, 'has_alpha': True},
+         'morph': True, 'animated': False, 'has_alpha': True}],
     'anime':
-        {'path': "filters/anime.png",
+        [{'path': "filters/anime.png",
          'anno_path': "filters/anime_annotations.csv",
-         'morph': True, 'animated': False, 'has_alpha': True},
+         'morph': True, 'animated': False, 'has_alpha': True}],
     'jason-joker':
-        {'path': "filters/jason-joker.png",
+        [{'path': "filters/jason-joker.png",
          'anno_path': "filters/jason-joker_annotations.csv",
-         'morph': True, 'animated': False, 'has_alpha': True},
+         'morph': True, 'animated': False, 'has_alpha': True}],
     'dog-nose':
-        {'path': "filters/dog-nose.png",
+        [{'path': "filters/dog-nose.png",
          'anno_path': "filters/dog-nose_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True},
+         'morph': False, 'animated': False, 'has_alpha': True}],
     'dog-ears':
-        {'path': "filters/dog-ears.png",
+        [{'path': "filters/dog-ears.png",
+         'anno_path': "filters/dog-ears_annotations.csv",
+         'morph': False, 'animated': False, 'has_alpha': True}],
+    'dog':
+        [{'path': "filters/dog-ears.png",
          'anno_path': "filters/dog-ears_annotations.csv",
          'morph': False, 'animated': False, 'has_alpha': True},
+         {'path': "filters/dog-nose.png",
+          'anno_path': "filters/dog-nose_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
     'cat-nose':
-        {'path': "filters/cat-nose.png",
+        [{'path': "filters/cat-nose.png",
          'anno_path': "filters/cat-nose_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True},
+         'morph': False, 'animated': False, 'has_alpha': True}],
     'cat-ears':
-        {'path': "filters/cat-ears.png",
+        [{'path': "filters/cat-ears.png",
          'anno_path': "filters/cat-ears_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True},
+         'morph': False, 'animated': False, 'has_alpha': True}],
 }
 
-filter_name = "dog-ears"
-filter = filters[filter_name]
+filter_name = "dog"
+filters = filters_config[filter_name]
 
 
 # detect facial landmarks in image
@@ -81,6 +88,7 @@ def getLandmarks(img):
             return relevant_keypnts
     return 0
 
+
 def load_filter(img_path, has_alpha):
     # Read the image
     img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -92,8 +100,6 @@ def load_filter(img_path, has_alpha):
 
     return img, alpha
 
-
-img1, img1_alpha = load_filter(filter['path'], filter['has_alpha'])
 
 def load_landmarks(annotation_file):
     with open(annotation_file) as csv_file:
@@ -108,39 +114,56 @@ def load_landmarks(annotation_file):
                 continue
         return points
 
+filter_runtime = []
+for filter in filters:
+    temp_dict = {}
 
-points1 = load_landmarks(filter['anno_path'])
+    img1, img1_alpha = load_filter(filter['path'], filter['has_alpha'])
 
-if filter['morph']:
-    # Find convex hull for delaunay triangulation using the landmark points
-    hull1 = []
-    hullIndex = cv2.convexHull(np.array(list(points1.values())), clockwise=False, returnPoints=False)
-    addPoints = [
-        [48], [49], [50], [51], [52], [53], [54], [55], [56], [57], [58], [59],  # Outer lips
-        [60], [61], [62], [63], [64], [65], [66], [67],  # Inner lips
-        [27], [28], [29], [30], [31], [32], [33], [34], [35],  # Nose
-        [36], [37], [38], [39], [40], [41], [42], [43], [44], [45], [46], [47],  # Eyes
-        [17], [18], [19], [20], [21], [22], [23], [24], [25], [26]  # Eyebrows
-        ]
-    hullIndex = np.concatenate((hullIndex, addPoints))
-    for i in range(0, len(hullIndex)):
-        hull1.append(points1[str(hullIndex[i][0])])
+    temp_dict['img'] = img1
+    temp_dict['img_a'] = img1_alpha
 
-    # Find Delaunay triangulation for convex hull points
-    sizeImg1 = img1.shape
-    rect = (0, 0, sizeImg1[1], sizeImg1[0])
-    dt = fbc.calculateDelaunayTriangles(rect, hull1)
+    points1 = load_landmarks(filter['anno_path'])
 
-    if len(dt) == 0:
-        quit()
+    temp_dict['points'] = points1
+
+    if filter['morph']:
+        # Find convex hull for delaunay triangulation using the landmark points
+        hull1 = []
+        hullIndex = cv2.convexHull(np.array(list(points1.values())), clockwise=False, returnPoints=False)
+        addPoints = [
+            [48], [49], [50], [51], [52], [53], [54], [55], [56], [57], [58], [59],  # Outer lips
+            [60], [61], [62], [63], [64], [65], [66], [67],  # Inner lips
+            [27], [28], [29], [30], [31], [32], [33], [34], [35],  # Nose
+            [36], [37], [38], [39], [40], [41], [42], [43], [44], [45], [46], [47],  # Eyes
+            [17], [18], [19], [20], [21], [22], [23], [24], [25], [26]  # Eyebrows
+            ]
+        hullIndex = np.concatenate((hullIndex, addPoints))
+        for i in range(0, len(hullIndex)):
+            hull1.append(points1[str(hullIndex[i][0])])
+
+        # Find Delaunay triangulation for convex hull points
+        sizeImg1 = img1.shape
+        rect = (0, 0, sizeImg1[1], sizeImg1[0])
+        dt = fbc.calculateDelaunayTriangles(rect, hull1)
+
+        temp_dict['hull'] = hull1
+        temp_dict['hullIndex'] = hullIndex
+        temp_dict['dt'] = dt
+
+        if len(dt) == 0:
+            continue
+
+    if filter['animated']:
+        filter_cap = cv2.VideoCapture(filter['path'])
+        temp_dict['cap'] = filter_cap
+
+    filter_runtime.append(temp_dict)
 
 print("processed input image")
 
 # process input from webcam or video file
 cap = cv2.VideoCapture(0)
-
-if filter['animated']:
-    filter_cap = cv2.VideoCapture(filter['path'])
 
 # Some variables
 count = 0
@@ -150,21 +173,21 @@ sigma = 50
 # The main loop
 while True:
 
-    ret, img2 = cap.read()
+    ret, frame = cap.read()
     if not ret:
         break
     else:
 
         # find landmarks after skipping SKIP_FRAMES number of frames
         if count % SKIP_FRAMES == 0:
-            points2 = getLandmarks(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
+            points2 = getLandmarks(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
         # if face is partially detected
         if not points2 or (len(points2) != 75):
             continue
 
         ################ Optical Flow and Stabilization Code #####################
-        img2Gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+        img2Gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         if isFirstFrame:
             points2Prev = np.array(points2, np.float32)
@@ -183,7 +206,7 @@ while True:
             d = cv2.norm(np.array(points2[k]) - points2Next[k])
             alpha = math.exp(-d * d / sigma)
             points2[k] = (1 - alpha) * np.array(points2[k]) + alpha * points2Next[k]
-            points2[k] = fbc.constrainPoint(points2[k], img2.shape[1], img2.shape[0])
+            points2[k] = fbc.constrainPoint(points2[k], frame.shape[1], frame.shape[0])
             points2[k] = (int(points2[k][0]), int(points2[k][1]))
 
         # Update variables for next pass
@@ -193,13 +216,13 @@ while True:
 
         if VISUALIZE_FACE_POINTS:
             for idx, point in enumerate(points2):
-                cv2.circle(img2, point, 2, (255, 0, 0), -1)
-                cv2.putText(img2, str(idx), point, cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 255, 255), 1)
-            cv2.imshow("landmarks", img2)
+                cv2.circle(frame, point, 2, (255, 0, 0), -1)
+                cv2.putText(frame, str(idx), point, cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 255, 255), 1)
+            cv2.imshow("landmarks", frame)
 
         if filter['morph']:
-            # create copy of img2
-            img1Warped = np.copy(img2)
+            # create copy of frame
+            img1Warped = np.copy(frame)
 
             # Find convex hull
             hull2 = []
@@ -231,14 +254,14 @@ while True:
 
             # Perform alpha blending of the two images
             temp1 = np.multiply(output, (mask1 * (1.0 / 255)))
-            temp2 = np.multiply(img2, (mask2 * (1.0 / 255)))
+            temp2 = np.multiply(frame, (mask2 * (1.0 / 255)))
             result = temp1 + temp2
         else:
             dst_points = [points2[int(list(points1.keys())[0])], points2[int(list(points1.keys())[1])]]
             tform = fbc.similarityTransform(list(points1.values()), dst_points)
             # Apply similarity transform to input image
-            trans_img = cv2.warpAffine(img1, tform, (img2.shape[1], img2.shape[0]))
-            trans_alpha = cv2.warpAffine(img1_alpha, tform, (img2.shape[1], img2.shape[0]))
+            trans_img = cv2.warpAffine(img1, tform, (frame.shape[1], frame.shape[0]))
+            trans_alpha = cv2.warpAffine(img1_alpha, tform, (frame.shape[1], frame.shape[0]))
             mask1 = cv2.merge((trans_alpha, trans_alpha, trans_alpha))
 
             # Blur the mask before blending
@@ -248,7 +271,7 @@ while True:
 
             # Perform alpha blending of the two images
             temp1 = np.multiply(trans_img, (mask1 * (1.0 / 255)))
-            temp2 = np.multiply(img2, (mask2 * (1.0 / 255)))
+            temp2 = np.multiply(frame, (mask2 * (1.0 / 255)))
             result = temp1 + temp2
 
         result = np.uint8(result)
