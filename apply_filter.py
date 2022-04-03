@@ -26,9 +26,13 @@ filters = {
         {'path': "filters/dog-nose.png",
          'anno_path': "filters/dog-nose_annotations.csv",
          'morph': False, 'animated': False, 'has_alpha': True},
+    'dog-ears':
+        {'path': "filters/dog-ears.png",
+         'anno_path': "filters/dog-ears_annotations.csv",
+         'morph': False, 'animated': False, 'has_alpha': True},
 }
 
-filter_name = "anonymous"
+filter_name = "dog-ears"
 filter = filters[filter_name]
 
 
