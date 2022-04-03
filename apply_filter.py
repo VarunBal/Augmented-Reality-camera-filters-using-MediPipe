@@ -176,6 +176,7 @@ while True:
             alpha = math.exp(-d * d / sigma)
             points2[k] = (1 - alpha) * np.array(points2[k]) + alpha * points2Next[k]
             points2[k] = fbc.constrainPoint(points2[k], img2.shape[1], img2.shape[0])
+            points2[k] = (int(points2[k][0]), int(points2[k][1]))
 
         # Update variables for next pass
         points2Prev = np.array(points2, np.float32)
