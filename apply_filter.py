@@ -45,6 +45,13 @@ filters_config = {
         [{'path': "filters/cat-ears.png",
          'anno_path': "filters/cat-ears_annotations.csv",
          'morph': False, 'animated': False, 'has_alpha': True}],
+    'cat':
+        [{'path': "filters/cat-ears.png",
+         'anno_path': "filters/cat-ears_annotations.csv",
+         'morph': False, 'animated': False, 'has_alpha': True},
+         {'path': "filters/cat-nose.png",
+          'anno_path': "filters/cat-nose_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
 }
 
 filter_name = "dog"
