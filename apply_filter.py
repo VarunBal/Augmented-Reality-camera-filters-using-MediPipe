@@ -282,6 +282,8 @@ while True:
 
             frame = output = np.uint8(output)
 
+        cv2.putText(frame, "Press F to change filters", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 0, 0), 1)
+
         cv2.imshow("Face Filter", output)
 
         keypressed = cv2.waitKey(1) & 0xFF
