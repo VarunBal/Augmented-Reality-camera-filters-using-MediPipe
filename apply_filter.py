@@ -30,6 +30,18 @@ filters_config = {
          {'path': "filters/cat-nose.png",
           'anno_path': "filters/cat-nose_annotations.csv",
           'morph': False, 'animated': False, 'has_alpha': True}],
+    'jason-joker':
+        [{'path': "filters/jason-joker.png",
+          'anno_path': "filters/jason-joker_annotations.csv",
+          'morph': True, 'animated': False, 'has_alpha': True}],
+    'gold-crown':
+        [{'path': "filters/gold-crown.png",
+          'anno_path': "filters/gold-crown_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
+    'flower-crown':
+        [{'path': "filters/flower-crown.png",
+          'anno_path': "filters/flower-crown_annotations.csv",
+          'morph': False, 'animated': False, 'has_alpha': True}],
 }
 
 
