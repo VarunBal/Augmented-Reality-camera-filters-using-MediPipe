@@ -114,7 +114,8 @@ def load_landmarks(annotation_file):
                 continue
         return points
 
-filter_runtime = []
+
+multi_filter_runtime = []
 for filter in filters:
     temp_dict = {}
 
@@ -158,7 +159,7 @@ for filter in filters:
         filter_cap = cv2.VideoCapture(filter['path'])
         temp_dict['cap'] = filter_cap
 
-    filter_runtime.append(temp_dict)
+    multi_filter_runtime.append(temp_dict)
 
 print("processed input image")
 
@@ -220,63 +221,73 @@ while True:
                 cv2.putText(frame, str(idx), point, cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 255, 255), 1)
             cv2.imshow("landmarks", frame)
 
-        if filter['morph']:
-            # create copy of frame
-            img1Warped = np.copy(frame)
+        for idx, filter in enumerate(filters):
 
-            # Find convex hull
-            hull2 = []
-            for i in range(0, len(hullIndex)):
-                hull2.append(points2[hullIndex[i][0]])
+            filter_runtime = multi_filter_runtime[idx]
+            img1 = filter_runtime['img']
+            points1 = filter_runtime['points']
+            img1_alpha = filter_runtime['img_a']
 
-            mask1 = np.zeros((img1Warped.shape[0], img1Warped.shape[1]), dtype=np.float32)
-            mask1 = cv2.merge((mask1, mask1, mask1))
-            img1_alpha_mask = cv2.merge((img1_alpha, img1_alpha, img1_alpha))
+            if filter['morph']:
 
-            # Warp the triangles
-            for i in range(0, len(dt)):
-                t1 = []
-                t2 = []
+                hullIndex = filter_runtime['hullIndex']
+                dt = filter_runtime['dt']
+                hull1 = filter_runtime['hull']
 
-                for j in range(0, 3):
-                    t1.append(hull1[dt[i][j]])
-                    t2.append(hull2[dt[i][j]])
+                # create copy of frame
+                warped_img = np.copy(frame)
 
-                fbc.warpTriangle(img1, img1Warped, t1, t2)
-                fbc.warpTriangle(img1_alpha_mask, mask1, t1, t2)
+                # Find convex hull
+                hull2 = []
+                for i in range(0, len(hullIndex)):
+                    hull2.append(points2[hullIndex[i][0]])
 
-            output = np.uint8(img1Warped)
+                mask1 = np.zeros((warped_img.shape[0], warped_img.shape[1]), dtype=np.float32)
+                mask1 = cv2.merge((mask1, mask1, mask1))
+                img1_alpha_mask = cv2.merge((img1_alpha, img1_alpha, img1_alpha))
 
-            # Blur the mask before blending
-            mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
+                # Warp the triangles
+                for i in range(0, len(dt)):
+                    t1 = []
+                    t2 = []
 
-            mask2 = (255.0, 255.0, 255.0) - mask1
+                    for j in range(0, 3):
+                        t1.append(hull1[dt[i][j]])
+                        t2.append(hull2[dt[i][j]])
 
-            # Perform alpha blending of the two images
-            temp1 = np.multiply(output, (mask1 * (1.0 / 255)))
-            temp2 = np.multiply(frame, (mask2 * (1.0 / 255)))
-            result = temp1 + temp2
-        else:
-            dst_points = [points2[int(list(points1.keys())[0])], points2[int(list(points1.keys())[1])]]
-            tform = fbc.similarityTransform(list(points1.values()), dst_points)
-            # Apply similarity transform to input image
-            trans_img = cv2.warpAffine(img1, tform, (frame.shape[1], frame.shape[0]))
-            trans_alpha = cv2.warpAffine(img1_alpha, tform, (frame.shape[1], frame.shape[0]))
-            mask1 = cv2.merge((trans_alpha, trans_alpha, trans_alpha))
+                    fbc.warpTriangle(img1, warped_img, t1, t2)
+                    fbc.warpTriangle(img1_alpha_mask, mask1, t1, t2)
 
-            # Blur the mask before blending
-            mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
+                # Blur the mask before blending
+                mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
 
-            mask2 = (255.0, 255.0, 255.0) - mask1
+                mask2 = (255.0, 255.0, 255.0) - mask1
 
-            # Perform alpha blending of the two images
-            temp1 = np.multiply(trans_img, (mask1 * (1.0 / 255)))
-            temp2 = np.multiply(frame, (mask2 * (1.0 / 255)))
-            result = temp1 + temp2
+                # Perform alpha blending of the two images
+                temp1 = np.multiply(warped_img, (mask1 * (1.0 / 255)))
+                temp2 = np.multiply(frame, (mask2 * (1.0 / 255)))
+                output = temp1 + temp2
+            else:
+                dst_points = [points2[int(list(points1.keys())[0])], points2[int(list(points1.keys())[1])]]
+                tform = fbc.similarityTransform(list(points1.values()), dst_points)
+                # Apply similarity transform to input image
+                trans_img = cv2.warpAffine(img1, tform, (frame.shape[1], frame.shape[0]))
+                trans_alpha = cv2.warpAffine(img1_alpha, tform, (frame.shape[1], frame.shape[0]))
+                mask1 = cv2.merge((trans_alpha, trans_alpha, trans_alpha))
 
-        result = np.uint8(result)
+                # Blur the mask before blending
+                mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
 
-        cv2.imshow("Face Filter", result)
+                mask2 = (255.0, 255.0, 255.0) - mask1
+
+                # Perform alpha blending of the two images
+                temp1 = np.multiply(trans_img, (mask1 * (1.0 / 255)))
+                temp2 = np.multiply(frame, (mask2 * (1.0 / 255)))
+                output = temp1 + temp2
+
+            frame = output = np.uint8(output)
+
+        cv2.imshow("Face Filter", output)
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
