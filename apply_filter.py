@@ -22,6 +22,10 @@ filters = {
         {'path': "filters/jason-joker.png",
          'anno_path': "filters/jason-joker_annotations.csv",
          'morph': True, 'animated': False, 'has_alpha': True},
+    'dog-nose':
+        {'path': "filters/dog-nose.png",
+         'anno_path': "filters/dog-nose_annotations.csv",
+         'morph': False, 'animated': False, 'has_alpha': True},
 }
 
 filter_name = "anonymous"
@@ -143,12 +147,36 @@ while True:
         if count % SKIP_FRAMES == 0:
             points2 = getLandmarks(cv2.cvtColor(img2, cv2.COLOR_BGR2RGB))
 
-        # convert to float data type
-        img1Warped = np.copy(img2)
-
         # if face is partially detected
         if not points2 or (len(points2) != 75):
             continue
+
+        ################ Optical Flow and Stabilization Code #####################
+        img2Gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+        if isFirstFrame:
+            points2Prev = np.array(points2, np.float32)
+            img2GrayPrev = np.copy(img2Gray)
+            isFirstFrame = False
+
+        lk_params = dict(winSize=(101, 101), maxLevel=15,
+                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.001))
+        points2Next, st, err = cv2.calcOpticalFlowPyrLK(img2GrayPrev, img2Gray, points2Prev,
+                                                        np.array(points2, np.float32),
+                                                        **lk_params)
+
+        # Final landmark points are a weighted average of detected landmarks and tracked landmarks
+
+        for k in range(0, len(points2)):
+            d = cv2.norm(np.array(points2[k]) - points2Next[k])
+            alpha = math.exp(-d * d / sigma)
+            points2[k] = (1 - alpha) * np.array(points2[k]) + alpha * points2Next[k]
+            points2[k] = fbc.constrainPoint(points2[k], img2.shape[1], img2.shape[0])
+
+        # Update variables for next pass
+        points2Prev = np.array(points2, np.float32)
+        img2GrayPrev = img2Gray
+        ################ End of Optical Flow and Stabilization Code ###############
 
         if VISUALIZE_FACE_POINTS:
             for idx, point in enumerate(points2):
@@ -156,64 +184,59 @@ while True:
                 cv2.putText(img2, str(idx), point, cv2.FONT_HERSHEY_SIMPLEX, .3, (255, 255, 255), 1)
             cv2.imshow("landmarks", img2)
 
-        # Find convex hull
-        hull2 = []
-        for i in range(0, len(hullIndex)):
-            hull2.append(points2[hullIndex[i][0]])
+        if filter['morph']:
+            # create copy of img2
+            img1Warped = np.copy(img2)
 
-        ################ Optical Flow and Stabilization Code #####################
-        img2Gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+            # Find convex hull
+            hull2 = []
+            for i in range(0, len(hullIndex)):
+                hull2.append(points2[hullIndex[i][0]])
 
-        if isFirstFrame:
-            hull2Prev = np.array(hull2, np.float32)
-            img2GrayPrev = np.copy(img2Gray)
-            isFirstFrame = False
+            mask1 = np.zeros((img1Warped.shape[0], img1Warped.shape[1]), dtype=np.float32)
+            mask1 = cv2.merge((mask1, mask1, mask1))
+            img1_alpha_mask = cv2.merge((img1_alpha, img1_alpha, img1_alpha))
 
-        lk_params = dict(winSize=(101, 101), maxLevel=15,
-                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.001))
-        hull2Next, st, err = cv2.calcOpticalFlowPyrLK(img2GrayPrev, img2Gray, hull2Prev, np.array(hull2, np.float32),
-                                                      **lk_params)
+            # Warp the triangles
+            for i in range(0, len(dt)):
+                t1 = []
+                t2 = []
 
-        # Final landmark points are a weighted average of detected landmarks and tracked landmarks
+                for j in range(0, 3):
+                    t1.append(hull1[dt[i][j]])
+                    t2.append(hull2[dt[i][j]])
 
-        for k in range(0, len(hull2)):
-            d = cv2.norm(np.array(hull2[k]) - hull2Next[k])
-            alpha = math.exp(-d * d / sigma)
-            hull2[k] = (1 - alpha) * np.array(hull2[k]) + alpha * hull2Next[k]
-            hull2[k] = fbc.constrainPoint(hull2[k], img2.shape[1], img2.shape[0])
+                fbc.warpTriangle(img1, img1Warped, t1, t2)
+                fbc.warpTriangle(img1_alpha_mask, mask1, t1, t2)
 
-        # Update variables for next pass
-        hull2Prev = np.array(hull2, np.float32)
-        img2GrayPrev = img2Gray
-        ################ End of Optical Flow and Stabilization Code ###############
+            output = np.uint8(img1Warped)
 
-        mask1 = np.zeros((img1Warped.shape[0], img1Warped.shape[1]), dtype=np.float32)
-        mask1 = cv2.merge((mask1, mask1, mask1))
-        img1_alpha_mask = cv2.merge((img1_alpha, img1_alpha, img1_alpha))
+            # Blur the mask before blending
+            mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
 
-        # Warp the triangles
-        for i in range(0, len(dt)):
-            t1 = []
-            t2 = []
+            mask2 = (255.0, 255.0, 255.0) - mask1
 
-            for j in range(0, 3):
-                t1.append(hull1[dt[i][j]])
-                t2.append(hull2[dt[i][j]])
+            # Perform alpha blending of the two images
+            temp1 = np.multiply(output, (mask1 * (1.0 / 255)))
+            temp2 = np.multiply(img2, (mask2 * (1.0 / 255)))
+            result = temp1 + temp2
+        else:
+            dst_points = [points2[int(list(points1.keys())[0])], points2[int(list(points1.keys())[1])]]
+            tform = fbc.similarityTransform(list(points1.values()), dst_points)
+            # Apply similarity transform to input image
+            trans_img = cv2.warpAffine(img1, tform, (img2.shape[1], img2.shape[0]))
+            trans_alpha = cv2.warpAffine(img1_alpha, tform, (img2.shape[1], img2.shape[0]))
+            mask1 = cv2.merge((trans_alpha, trans_alpha, trans_alpha))
 
-            fbc.warpTriangle(img1, img1Warped, t1, t2)
-            fbc.warpTriangle(img1_alpha_mask, mask1, t1, t2)
+            # Blur the mask before blending
+            mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
 
-        output = np.uint8(img1Warped)
+            mask2 = (255.0, 255.0, 255.0) - mask1
 
-        # Blur the mask before blending
-        mask1 = cv2.GaussianBlur(mask1, (3, 3), 10)
-
-        mask2 = (255.0, 255.0, 255.0) - mask1
-
-        # Perform alpha blending of the two images
-        temp1 = np.multiply(output, (mask1 * (1.0 / 255)))
-        temp2 = np.multiply(img2, (mask2 * (1.0 / 255)))
-        result = temp1 + temp2
+            # Perform alpha blending of the two images
+            temp1 = np.multiply(trans_img, (mask1 * (1.0 / 255)))
+            temp2 = np.multiply(img2, (mask2 * (1.0 / 255)))
+            result = temp1 + temp2
 
         result = np.uint8(result)
 
