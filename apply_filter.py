@@ -5,8 +5,6 @@ import numpy as np
 import faceBlendCommon as fbc
 import csv
 
-SKIP_FRAMES = 2
-
 VISUALIZE_FACE_POINTS = False
 
 filters_config = {
@@ -18,18 +16,6 @@ filters_config = {
         [{'path': "filters/anime.png",
          'anno_path': "filters/anime_annotations.csv",
          'morph': True, 'animated': False, 'has_alpha': True}],
-    'jason-joker':
-        [{'path': "filters/jason-joker.png",
-         'anno_path': "filters/jason-joker_annotations.csv",
-         'morph': True, 'animated': False, 'has_alpha': True}],
-    'dog-nose':
-        [{'path': "filters/dog-nose.png",
-         'anno_path': "filters/dog-nose_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True}],
-    'dog-ears':
-        [{'path': "filters/dog-ears.png",
-         'anno_path': "filters/dog-ears_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True}],
     'dog':
         [{'path': "filters/dog-ears.png",
          'anno_path': "filters/dog-ears_annotations.csv",
@@ -37,14 +23,6 @@ filters_config = {
          {'path': "filters/dog-nose.png",
           'anno_path': "filters/dog-nose_annotations.csv",
           'morph': False, 'animated': False, 'has_alpha': True}],
-    'cat-nose':
-        [{'path': "filters/cat-nose.png",
-         'anno_path': "filters/cat-nose_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True}],
-    'cat-ears':
-        [{'path': "filters/cat-ears.png",
-         'anno_path': "filters/cat-ears_annotations.csv",
-         'morph': False, 'animated': False, 'has_alpha': True}],
     'cat':
         [{'path': "filters/cat-ears.png",
          'anno_path': "filters/cat-ears_annotations.csv",
@@ -186,9 +164,7 @@ while True:
         break
     else:
 
-        # find landmarks after skipping SKIP_FRAMES number of frames
-        if count % SKIP_FRAMES == 0:
-            points2 = getLandmarks(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        points2 = getLandmarks(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
         # if face is partially detected
         if not points2 or (len(points2) != 75):
